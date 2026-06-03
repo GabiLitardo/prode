@@ -7,18 +7,18 @@ st.subheader("Formato Oficial de 48 Equipos - Llave Completa")
 
 # 1. Base de datos OFICIAL del Mundial 2026 (12 grupos, 48 selecciones)
 grupos_data = {
-    "Grupo A": ["México", "Estados Unidos", "Canadá", "Argentina"],
-    "Grupo B": ["Francia", "España", "Inglaterra", "Portugal"],
-    "Grupo C": ["Brasil", "Uruguay", "Colombia", "Ecuador"],
-    "Grupo D": ["Alemania", "Italia", "Países Bajos", "Bélgica"],
-    "Grupo E": ["Marruecos", "Senegal", "Egipto", "Nigeria"],
-    "Grupo F": ["Japón", "Corea del Sur", "Australia", "Irán"],
-    "Grupo G": ["Croacia", "Suiza", "Dinamarca", "Austria"],
-    "Grupo H": ["Chile", "Perú", "Paraguay", "Venezuela"],
-    "Grupo I": ["Costa Rica", "Panamá", "Jamaica", "Honduras"],
-    "Grupo J": ["Argelia", "Túnez", "Mali", "Camerún"],
-    "Grupo K": ["Arabia Saudita", "Qatar", "Emiratos Árabes", "Irak"],
-    "Grupo L": ["Suecia", "Ucrania", "Polonia", "Escocia"]
+    "Grupo A": ["México", "Corea", "Chequia", "Sudáfrica"],
+    "Grupo B": ["Suiza", "Bosnia", "Canada", "Qatar"],
+    "Grupo C": ["Brasil", "Marruecos", "Haití", "Escocia"],
+    "Grupo D": ["EEUU", "Paraguay", "Australia", "Turquía"],
+    "Grupo E": ["Alemania", "Curazao", "Costa de Marfil", "Ecuador"],
+    "Grupo F": ["Países Bajos", "Japón", "Suecia", "Túnez"],
+    "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
+    "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
+    "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
+    "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
+    "Grupo K": ["Portugal", "RD Congo", "Uzbekistán", "Colombia"],
+    "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
 }
 
 st.write("### ⚽ 1. Carga los resultados de la Fase de Grupos")
