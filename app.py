@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 
+
 st.set_page_config(page_title="Prode Laboratorio 2026", layout="wide")
 st.title("🏆 Simulador Inteligente - Prode Mundial 2026")
 st.subheader("Formato Oficial de 48 Equipos - Llave Completa")
