@@ -81,7 +81,7 @@ for idx, ter_nom in enumerate(mejores_8_terceros):
     posiciones[terceros_mapeo[idx]] = ter_nom
 
 # Relleno de seguridad
-for c_ter en terceros_mapeo:
+for c_ter in terceros_mapeo:
     if c_ter not in posiciones:
         posiciones[c_ter] = f"Tercero ({c_ter.split('_')[1]})"
 
