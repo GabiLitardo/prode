@@ -5,7 +5,7 @@ st.set_page_config(page_title="Prode Laboratorio 2026", layout="wide")
 st.title("🏆 Simulador Inteligente - Prode Mundial 2026")
 st.subheader("Formato Oficial de 48 Equipos - Llave Completa")
 
-# 1. Base de datos OFICIAL modificada por el usuario (12 grupos)
+# 1. Base de datos oficial aportada por el usuario
 grupos_data = {
     "Grupo A": ["México", "Corea", "Chequia", "Sudáfrica"],
     "Grupo B": ["Suiza", "Bosnia", "Canada", "Qatar"],
@@ -61,60 +61,60 @@ for grupo, equipos in grupos_data.items():
         tablas_grupos[grupo] = tabla_df
         st.dataframe(tabla_df, use_container_width=True)
 
-# 2. PROCESAMIENTO MATEMÁTICO DE CLASIFICADOS E IDENTIFICACIÓN
+# 2. PROCESAMIENTO MATEMÁTICO DE POSICIONES
 posiciones = {}
 todos_los_terceros = {}
 
 for grupo, tabla in tablas_grupos.items():
-    g_letra = grupo.split(" ")[1] # Extrae la letra A, B, C...
-    posiciones[f"1{g_letra}"] = tabla.index[0] # Ej: posiciones["1A"] = "México"
-    posiciones[f"2{g_letra}"] = tabla.index[1] # Ej: posiciones["2A"] = "Corea"
+    g_letra = grupo.split(" ")[1] # Extrae la letra del grupo
+    posiciones[f"1{g_letra}"] = tabla.index[0] 
+    posiciones[f"2{g_letra}"] = tabla.index[1] 
     todos_los_terceros[tabla.index[2]] = {**tabla.iloc[2].to_dict(), "equipo": tabla.index[2]}
 
 # Ranking de mejores terceros
 mejores_terceros_df = pd.DataFrame.from_dict(todos_los_terceros, orient='index').sort_values(by=["pts", "dg", "gf"], ascending=False)
 mejores_8_terceros = list(mejores_terceros_df["equipo"].iloc[:8])
 
-# Mapear los 8 terceros a las posiciones de las llaves que los esperan (3A, 3B, etc.) de manera secuencial
+# Asignar los 8 mejores terceros de forma secuencial a los casilleros del fixture reglamentario
+terceros_mapeo = ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]
 for idx, ter_nom in enumerate(mejores_8_terceros):
-    posiciones[f"3_M{idx+1}"] = ter_nom
+    posiciones[terceros_mapeo[idx]] = ter_nom
 
-# Si por alguna razón faltan terceros por simular sin goles, rellenamos con placeholders
-for idx in range(8):
-    if f"3_M{idx+1}" not in posiciones:
-        posiciones[f"3_M{idx+1}"] = f"Mejor Tercero {idx+1}"
+# Relleno de seguridad
+for c_ter en terceros_mapeo:
+    if c_ter not in posiciones:
+        posiciones[c_ter] = f"Tercero ({c_ter.split('_')[1]})"
 
-st.success(f"💪 ¡Fase de grupos completada! Se detectaron los 32 clasificados siguiendo las reglas del Mundial.")
+st.success(f"💪 ¡Fase de grupos completada con éxito! Se armaron los cruces oficiales de la FIFA.")
 
-# --- FASE DE ELIMINACIÓN DIRECTA (CRUCES OFICIALES FIFA) ---
+# --- FASE DE ELIMINACIÓN DIRECTA ---
 st.write("---")
 st.write("### 🔀 2. Cuadro de Eliminación Directa")
 
 playoffs_resultados = {}
 
-# Definición de los cruces estructurales de 16vos estipulados por FIFA
-# Se emparejan de manera que el árbol de progresión (Llave 1 vs Llave 2) fluya limpio hacia Octavos
+# Tu matriz exacta de cruces oficiales para los 16 partidos de 16vos
 cruces_16vos_estructura = [
-    {"name": "Llave 1", "eq1": "1A", "eq2": "3_M1"}, 
-    {"name": "Llave 2", "eq1": "2E", "eq2": "2F"},
-    {"name": "Llave 3", "eq1": "1B", "eq2": "3_M2"}, 
-    {"name": "Llave 4", "eq1": "2C", "eq2": "2D"},
-    {"name": "Llave 5", "eq1": "1C", "eq2": "3_M3"}, 
-    {"name": "Llave 6", "eq1": "2A", "eq2": "2B"},
-    {"name": "Llave 7", "eq1": "1D", "eq2": "3_M4"}, 
-    {"name": "Llave 8", "eq1": "2G", "eq2": "2H"},
-    {"name": "Llave 9", "eq1": "1E", "eq2": "3_M5"}, 
-    {"name": "Llave 10", "eq1": "2I", "eq2": "2J"},
-    {"name": "Llave 11", "eq1": "1F", "eq2": "3_M6"}, 
-    {"name": "Llave 12", "eq1": "2K", "eq2": "2L"},
-    {"name": "Llave 13", "eq1": "1G", "eq2": "3_M7"}, 
-    {"name": "Llave 14", "eq1": "1H", "eq2": "2E"}, # En el fixture real cruzan Segundos vs Primeros también
-    {"name": "Llave 15", "eq1": "1I", "eq2": "3_M8"}, 
-    {"name": "Llave 16", "eq1": "1J", "eq2": "1K"}
+    {"name": "Partido 1", "eq1": "2A", "eq2": "2B"},
+    {"name": "Partido 2", "eq1": "1C", "eq2": "2F"},
+    {"name": "Partido 3", "eq1": "1E", "eq2": "3_P3"},
+    {"name": "Partido 4", "eq1": "1F", "eq2": "2C"},
+    {"name": "Partido 5", "eq1": "2E", "eq2": "2I"},
+    {"name": "Partido 6", "eq1": "1I", "eq2": "3_P6"},
+    {"name": "Partido 7", "eq1": "1A", "eq2": "3_P7"},
+    {"name": "Partido 8", "eq1": "1L", "eq2": "3_P8"},
+    {"name": "Partido 9", "eq1": "1G", "eq2": "3_P9"},
+    {"name": "Partido 10", "eq1": "1D", "eq2": "3_P10"},
+    {"name": "Partido 11", "eq1": "1H", "eq2": "2J"},
+    {"name": "Partido 12", "eq1": "2K", "eq2": "2L"},
+    {"name": "Partido 13", "eq1": "1B", "eq2": "3_P13"},
+    {"name": "Partido 14", "eq1": "2D", "eq2": "2G"},
+    {"name": "Partido 15", "eq1": "1J", "eq2": "2H"},
+    {"name": "Partido 16", "eq1": "1K", "eq2": "3_P16"}
 ]
 
 # --- 16vos de Final ---
-st.write("#### 🔹 Dieciseisavos de Final (Cruces Reglamentarios)")
+st.write("#### 🔹 Dieciseisavos de Final")
 ganadores_16vos = []
 col_16_1, col_16_2 = st.columns(2)
 
@@ -126,9 +126,9 @@ for i, cruce in enumerate(cruces_16vos_estructura):
     with target_col:
         ganador = st.radio(f"**{cruce['name']}**: {eq_local} vs {eq_visita}", [eq_local, eq_visita], key=f"l16_{i}", horizontal=True)
         ganadores_16vos.append(ganador)
-        playoffs_resultados[f"Ganador_16vos_L{i+1}"] = ganador
+        playoffs_resultados[f"Ganador_16vos_P{i+1}"] = ganador
 
-# --- Octavos de Final (Llave 1 vs Llave 2, Llave 3 vs Llave 4...) ---
+# --- Octavos de Final (P1 vs P2, P3 vs P4...) ---
 st.write("---")
 st.write("#### 🔹 Octavos de Final")
 ganadores_8vos = []
@@ -140,11 +140,11 @@ for i in range(8):
     
     target_col = col_8_1 if i < 4 else col_8_2
     with target_col:
-        ganador = st.radio(f"Octavos Llave {i+1} ({eq_local} vs {eq_visita})", [eq_local, eq_visita], key=f"l8_{i}", horizontal=True)
+        ganador = st.radio(f"Octavos {i+1} (Ganador P{i*2+1} vs Ganador P{i*2+2})", [eq_local, eq_visita], key=f"l8_{i}", horizontal=True)
         ganadores_8vos.append(ganador)
-        playoffs_resultados[f"Ganador_8vos_L{i+1}"] = ganador
+        playoffs_resultados[f"Ganador_8vos_O{i+1}"] = ganador
 
-# --- Cuartos de Final ---
+# --- Cuartos de Final (O1 vs O2, O3 vs O4...) ---
 st.write("---")
 st.write("#### 🔹 Cuartos de Final")
 ganadores_cuartos = []
@@ -156,9 +156,9 @@ for i in range(4):
     
     target_col = col_4_1 if i < 2 else col_4_2
     with target_col:
-        ganador = st.radio(f"Cuartos Llave {i+1} ({eq_local} vs {eq_visita})", [eq_local, eq_visita], key=f"l4_{i}", horizontal=True)
+        ganador = st.radio(f"Cuartos {i+1} (Ganador Octavos {i*2+1} vs {i*2+2})", [eq_local, eq_visita], key=f"l4_{i}", horizontal=True)
         ganadores_cuartos.append(ganador)
-        playoffs_resultados[f"Ganador_Cuartos_L{i+1}"] = ganador
+        playoffs_resultados[f"Ganador_Cuartos_C{i+1}"] = ganador
 
 # --- Semifinales ---
 st.write("---")
@@ -172,7 +172,7 @@ for i in range(2):
     eq_visita = ganadores_cuartos[i*2 + 1]
     
     with col_semi[i]:
-        ganador = st.radio(f"Semifinal {i+1} ({eq_local} vs {eq_visita})", [eq_local, eq_visita], key=f"lsemi_{i}", horizontal=True)
+        ganador = st.radio(f"Semifinal {i+1} (Ganador Cuartos {i*2+1} vs {i*2+2})", [eq_local, eq_visita], key=f"lsemi_{i}", horizontal=True)
         finalistas.append(ganador)
         perdedor = eq_visita if ganador == eq_local else eq_local
         perdedores_semis.append(perdedor)
@@ -183,7 +183,7 @@ st.write("---")
 col_finales = st.columns(2)
 
 with col_finales[0]:
-    st.write("#### 🥉 Tercer Puesto")
+    st.write("#### 🥉 Partido por el Tercer Puesto")
     tercer_puesto = st.radio(f"Definición: {perdedores_semis[0]} vs {perdedores_semis[1]}", [perdedores_semis[0], perdedores_semis[1]], key="3er_puesto", horizontal=True)
     playoffs_resultados["Tercer_Puesto"] = tercer_puesto
 
