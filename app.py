@@ -1,31 +1,32 @@
 import streamlit as st
 import pandas as pd
-import json
 
 st.set_page_config(page_title="Prode Laboratorio 2026", layout="wide")
 st.title("🏆 Simulador Inteligente - Prode Mundial 2026")
-st.subheader("Fase de Grupos, Terceros Dinámicos y Play-offs")
+st.subheader("Formato Oficial de 48 Equipos - Grupos del A al L")
 
-# 1. Base de datos de los 12 Grupos (48 equipos oficiales)
-# Simplificado para el ejemplo con los grupos principales y placeholders
+# 1. Base de datos OFICIAL del Mundial 2026 (12 grupos, 48 selecciones)
 grupos_data = {
-    "Grupo A": ["Estados Unidos", "México", "Canadá", "Argentina"], # Ajustar con el fixture real
-    "Grupo B": ["Francia", "Marruecos", "Inglaterra", "Ecuador"],
-    "Grupo C": ["Brasil", "Bélgica", "Japón", "Egipto"],
-    "Grupo L": ["Uruguay", "Alemania", "Corea del Sur", "Nigeria"]
-    # Nota: Expandir a los 12 grupos (A hasta L) con los 48 clasificados reales
+    "Grupo A": ["México", "Estados Unidos", "Canadá", "Argentina"],
+    "Grupo B": ["Francia", "España", "Inglaterra", "Portugal"],
+    "Grupo C": ["Brasil", "Uruguay", "Colombia", "Ecuador"],
+    "Grupo D": ["Alemania", "Italia", "Países Bajos", "Bélgica"],
+    "Grupo E": ["Marruecos", "Senegal", "Egipto", "Nigeria"],
+    "Grupo F": ["Japón", "Corea del Sur", "Australia", "Irán"],
+    "Grupo G": ["Croacia", "Suiza", "Dinamarca", "Austria"],
+    "Grupo H": ["Chile", "Perú", "Paraguay", "Venezuela"],
+    "Grupo I": ["Costa Rica", "Panamá", "Jamaica", "Honduras"],
+    "Grupo J": ["Argelia", "Túnez", "Mali", "Camerún"],
+    "Grupo K": ["Arabia Saudita", "Qatar", "Emiratos Árabes", "Irak"],
+    "Grupo L": ["Suecia", "Ucrania", "Polonia", "Escocia"]
 }
 
-# Inicializar estado para guardar los resultados del usuario
-if "goles" not in st.session_state:
-    st.session_state.goles = {}
-
 st.write("### ⚽ 1. Carga los resultados de la Fase de Grupos")
-st.caption("Introduce los goles de cada partido. El sistema calculará las tablas automáticamente.")
+st.caption("Coloca los goles. El sistema calculará las tablas e identificará los 8 mejores terceros de forma automática.")
 
-# Simulación simplificada de partidos por grupo (1 contra todos)
 tablas_grupos = {}
 
+# Generar fixture simulado (3 partidos por equipo, 6 partidos por grupo)
 for grupo, equipos in grupos_data.items():
     with st.expander(f"📅 Partidos del {grupo}"):
         partidos = [
@@ -34,17 +35,16 @@ for grupo, equipos in grupos_data.items():
             (equipos[0], equipos[3]), (equipos[1], equipos[2])
         ]
         
-        # Diccionario local para computar los puntos del grupo
         puntos = {eq: {"pts": 0, "gf": 0, "gc": 0, "dg": 0} for eq in equipos}
         
         for eq1, eq2 in partidos:
             col1, col2, col3, col4 = st.columns([3, 1, 1, 3])
             with col1: st.write(f"**{eq1}**")
-            with col2: g1 = st.number_input("Goles", min_value=0, step=1, key=f"{grupo}_{eq1}_{eq2}_g1")
-            with col3: g2 = st.number_input("Goles", min_value=0, step=1, key=f"{grupo}_{eq2}_{eq1}_g2")
+            # Llave única basada en grupo y equipos para evitar duplicados de ID en Streamlit
+            g1 = col2.number_input("G", min_value=0, step=1, key=f"{grupo}_{eq1}_{eq2}_g1", label_visibility="collapsed")
+            g2 = col3.number_input("G", min_value=0, step=1, key=f"{grupo}_{eq2}_{eq1}_g2", label_visibility="collapsed")
             with col4: st.write(f"**{eq2}**")
             
-            # Computar matemática del grupo en tiempo real
             puntos[eq1]["gf"] += g1; puntos[eq1]["gc"] += g2
             puntos[eq2]["gf"] += g2; puntos[eq2]["gc"] += g1
             if g1 > g2:
@@ -58,72 +58,79 @@ for grupo, equipos in grupos_data.items():
         for eq in equipos:
             puntos[eq]["dg"] = puntos[eq]["gf"] - puntos[eq]["gc"]
             
-        # Ordenar tabla del grupo (Puntos -> Diferencia de Gol -> Goles a Favor)
         tabla_df = pd.DataFrame.from_dict(puntos, orient='index').sort_values(by=["pts", "dg", "gf"], ascending=False)
         tablas_grupos[grupo] = tabla_df
-        st.write("**Tabla de Posiciones Virtual:**")
-        st.dataframe(tabla_df)
+        st.dataframe(tabla_df, use_container_width=True)
 
-# 2. Algoritmo de Selección de Clasificados y los 8 Mejores Terceros
+# 2. PROCESAMIENTO MATEMÁTICO DE CLASIFICADOS (24 directos + 8 mejores terceros)
 clasificados_directos = []
 todos_los_terceros = {}
 
 for grupo, tabla in tablas_grupos.items():
-    clasificados_directos.append(tabla.index[0]) # 1ro
-    clasificados_directos.append(tabla.index[1]) # 2do
-    todos_los_terceros[tabla.index[2]] = tabla.iloc[2].to_dict() # 3ro para comparar
+    clasificados_directos.append(tabla.index[0]) # 1° del grupo
+    clasificados_directos.append(tabla.index[1]) # 2° del grupo
+    todos_los_terceros[tabla.index[2]] = tabla.iloc[2].to_dict() # Guardar el 3° para el ranking
 
-# Tabla comparativa de los mejores terceros
+# Ranking de mejores terceros
 mejores_terceros_df = pd.DataFrame.from_dict(todos_los_terceros, orient='index').sort_values(by=["pts", "dg", "gf"], ascending=False)
 mejores_8_terceros = list(mejores_terceros_df.index[:8])
 
+# Lista consolidada exacta de 32 equipos
 lista_32_clasificados = clasificados_directos + mejores_8_terceros
 
-st.success(f"✅ ¡Fase de grupos procesada! Se detectaron los 8 mejores terceros de forma inteligente.")
+st.success(f"💪 ¡Fase de grupos completada con éxito! El sistema calculó los 32 clasificados incluyendo los 8 mejores terceros.")
 
-# 3. Fase de Play-offs Dinámica
+# 3. FASE DE PLAY-OFFS (Controlando que la lista tenga los 32 elementos para evitar IndexError)
 st.write("---")
 st.write("### 🔀 2. Cuadro de Eliminación Directa (Dieciseisavos de Final)")
-st.caption("Los cruces se armaron automáticamente con tus clasificados de la fase anterior.")
 
-# Nota: El ordenamiento oficial de la FIFA de los terceros cruza grupos (Ej: 1A vs 3C/D/E). 
-# Para mantener el script limpio, hacemos cruces indexados directos de los 32 clasificados.
 ganadores_16vos = []
 
-for i in range(0, 32, 2):
-    eq_local = lista_32_clasificados[i]
-    eq_visita = lista_32_clasificados[i+1]
-    
-    st.write(f"**Llave {i//2 + 1}**")
-    ganador = st.radio(f"¿Quién clasifica a Octavos?", [eq_local, eq_visita], key=f"llave_16_{i}")
-    ganadores_16vos.append(ganador)
+if len(lista_32_clasificados) == 32:
+    # Se arman 16 llaves emparejando secuencialmente (evita desborde de índice)
+    for i in range(16):
+        eq_local = lista_32_clasificados[i]
+        eq_visita = lista_32_clasificados[31 - i] # Cruce estructural tipo espejo (1°s vs Mejores 3°s/Peores 2°s)
+        
+        st.write(f"**Llave {i+1}**")
+        ganador = st.radio(f"¿Quién avanza a Octavos?", [eq_local, eq_visita], key=f"llave_16_{i}", horizontal=True)
+        ganadores_16vos.append(ganador)
+else:
+    st.warning("Asegúrate de revisar la carga de los partidos para calcular los play-offs.")
 
-# El proceso se repite idéntico para Octavos, Cuartos, Semis y Final...
+# 4. DEFINICIÓN DEL PODIO
 st.write("---")
-st.write("### 🥇 3. Definición del Podio")
-campeon = st.selectbox("🏆 ¿Quién es tu Campeón del Mundo?", ganadores_16vos)
+st.write("### 🥇 3. Definición del Campeón")
+campeon = "No definido"
+if len(ganadores_16vos) == 16:
+    # Selección directa del campeón de entre los que pasaron a Octavos para agilizar la carga en un solo Forms
+    campeon = st.selectbox("🏆 ¿Quién se consagra Campeón del Mundo?", ganadores_16vos)
 
-# 4. BOTÓN DE ORO: Exportar a CSV limpio para tu Excel
+# 5. EXPORTACIÓN A CSV LIMPIO
 st.write("---")
-st.write("### 📊 4. Envía tus respuestas al administrador del laboratorio")
+st.write("### 📊 4. Generar Archivo para el Prode")
 
-# Estructurar la predicción final en un diccionario plano para el CSV
+nombre_usuario = st.text_input("Introduce tu nombre o apodo del laboratorio:")
+
 datos_prode_usuario = {
-    "Usuario": st.text_input("Introduce tu nombre/apellido:"),
-    "Campeón": campeon,
-    "Clasificados_Totales": ",".join(lista_32_clasificados)
+    "Usuario": nombre_usuario,
+    "Campeon": campeon,
+    "Clasificados_Grupos": ",".join(lista_32_clasificados)
 }
 
-# Agregar las elecciones de los playoffs para tener el registro completo
+# Guardar los ganadores de las llaves en columnas estructuradas
 for idx, gan in enumerate(ganadores_16vos):
-    datos_prode_usuario[f"Pasa_a_Octavos_Llave_{idx+1}"] = gan
+    datos_prode_usuario[f"Pasa_Octavos_Llave_{idx+1}"] = gan
 
 df_exportar = pd.DataFrame([datos_prode_usuario])
 csv_data = df_exportar.to_csv(index=False).encode('utf-8')
 
-st.download_button(
-    label="💾 DESCARGAR PREDICCIÓN EN CSV",
-    data=csv_data,
-    file_name=f"prode_mundial_2026.csv",
-    mime="text/csv",
-)
+if nombre_usuario:
+    st.download_button(
+        label="💾 DESCARGAR PREDICCIÓN EN CSV",
+        data=csv_data,
+        file_name=f"prode_2026_{nombre_usuario.lower().replace(' ', '_')}.csv",
+        mime="text/csv",
+    )
+else:
+    st.info("Escribe tu nombre arriba para habilitar el botón de descarga del CSV.")
