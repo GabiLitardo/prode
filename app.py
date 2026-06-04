@@ -12,9 +12,13 @@ st.subheader("Formato Oficial de 48 Equipos - Matriz de Cruces FIFA")
 def cargar_matriz_fifa():
     try:
         df = pd.read_csv("matriz_fifa_2026.csv", dtype=str)
-        # 🔥 Limpiamos espacios en blanco invisibles en los encabezados y en la columna combo
+        # Limpieza absoluta de nombres de columnas por si acaso
         df.columns = df.columns.str.strip()
-        df["combo"] = df["combo"].str.strip()
+        # Verificación estricta del formato de la columna combo
+        df["combo"] = df["combo"].astype(str).str.strip().str.upper()
+        # Limpieza de las celdas de partidos para asegurar match directo con tu diccionario
+        for col in ["P3", "P6", "P7", "P8", "P9", "P10", "P13", "P16"]:
+            df[col] = df[col].astype(str).str.strip().str.upper()
         return df
     except FileNotFoundError:
         return pd.DataFrame(columns=["combo", "P3", "P6", "P7", "P8", "P9", "P10", "P13", "P16"])
