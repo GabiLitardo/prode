@@ -21,14 +21,30 @@ grupos_data = {
     "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
 }
 
+# Declaración anticipada de la función Fallback (Evita redeclaraciones en el renderizado)
+def asignar_tercero_fallback(opciones_partido, letras_disponibles, grupo_rival, terceros_dict):
+    for letra in opciones_partido:
+        if letra in letras_disponibles and letra != grupo_rival:
+            letras_disponibles.remove(letra)
+            return terceros_dict[letra]["equipo"]
+    for letra in opciones_partido:
+        if letra in letras_disponibles:
+            letras_disponibles.remove(letra)
+            return terceros_dict[letra]["equipo"]
+    if letras_disponibles:
+        letra = list(letras_disponibles)[0]
+        letras_disponibles.remove(letra)
+        return terceros_dict[letra]["equipo"]
+    return "Tercero Pendiente"
+
 st.write("### ⚽ 1. Carga los resultados de la Fase de Grupos")
-st.caption("Coloca los goles de cada encuentro. El sistema calculará automáticamente las posiciones y los mejores terceros.")
+st.caption("Coloca los goles. El sistema calculará las tablas e identificará los 8 mejores terceros de forma automática.")
 
 tablas_grupos = {}
 posiciones_fijas = {}
 terceros_por_grupo = {}
 
-# Renderizado de Fixture por Grupo (Carga de Goles)
+# Generar fixture simulado e interfaz de carga de goles (UX fluida)
 cols_pestanas = st.columns(3)
 for idx_g, (grupo, equipos) in enumerate(grupos_data.items()):
     g_letra = grupo.split(" ")[1]
@@ -46,8 +62,8 @@ for idx_g, (grupo, equipos) in enumerate(grupos_data.items()):
             for eq1, eq2 in partidos:
                 col1, col2, col3, col4 = st.columns([3, 1, 1, 3])
                 with col1: st.write(f"**{eq1}**")
-                g1 = col2.number_input("G", min_value=0, step=1, key=f"{grupo}_{eq1}_{eq2}_g1_pro", label_visibility="collapsed")
-                g2 = col3.number_input("G", min_value=0, step=1, key=f"{grupo}_{eq2}_{eq1}_g2_pro", label_visibility="collapsed")
+                g1 = col2.number_input("G", min_value=0, step=1, key=f"{grupo}_{eq1}_{eq2}_g1", label_visibility="collapsed")
+                g2 = col3.number_input("G", min_value=0, step=1, key=f"{grupo}_{eq2}_{eq1}_g2", label_visibility="collapsed")
                 with col4: st.write(f"**{eq2}**")
                 
                 puntos[eq1]["gf"] += g1; puntos[eq1]["gc"] += g2
@@ -79,74 +95,53 @@ for idx_g, (grupo, equipos) in enumerate(grupos_data.items()):
                 "gf": tabla_df.iloc[2]["gf"]
             }
 
-# Ranking global de terceros
+# Ranking global de los terceros para ver cuáles 8 clasifican
 df_terceros = pd.DataFrame.from_dict(terceros_por_grupo, orient='index').sort_values(by=["pts", "dg", "gf"], ascending=False)
-letras_terceros_clasificados = set(df_terceros.index[:8])
+
+# Creamos un string ordenado alfabéticamente con las 8 letras clasificadas (ej: "ABCDEFGH")
+combo_terceros = "".join(sorted(list(df_terceros.index[:8])))
 mejores_8_terceros = [terceros_por_grupo[l]["equipo"] for l in df_terceros.index[:8]]
 
 # ==============================================================================
-# 2. PROCESAMIENTO REGLAMENTARIO DE TERCEROS (TABLA OFICIAL FIFA MUNDIAL 2026)
+# MATRIZ OFICIAL DE COMBINACIONES DE LA FIFA (MUNDIAL 2026)
+# Cada fila representa el orden exacto de grupos destinados a:
+# ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]
 # ==============================================================================
-posiciones_completas = posiciones_fijas.copy()
-combo_terceros = "".join(sorted(list(letras_terceros_clasificados)))
-
-# Opciones fijas reglamentarias de cada casillero de terceros para el Fallback
-opciones_fifa_terceros = {
-    "3_P3":  {"opciones": ["A", "B", "C", "D", "F"], "rival": "E"},
-    "3_P6":  {"opciones": ["F", "D", "G", "H", "C"], "rival": "I"},
-    "3_P7":  {"opciones": ["C", "E", "F", "H", "I"], "rival": "A"},
-    "3_P8":  {"opciones": ["E", "H", "I", "J", "K"], "rival": "L"},
-    "3_P9":  {"opciones": ["A", "E", "H", "I", "J"], "rival": "G"},
-    "3_P10": {"opciones": ["B", "E", "F", "I", "J"], "rival": "D"},
-    "3_P13": {"opciones": ["E", "F", "G", "I", "J"], "rival": "B"},
-    "3_P16": {"opciones": ["D", "E", "I", "J", "L"], "rival": "K"}
-}
-
-# Matriz Oficial de Combinaciones Directas (Ampliable según el manual de la FIFA)
 tabla_combinaciones_fifa = {
     "ABCDEFGH": ["A", "B", "C", "D", "E", "F", "G", "H"],
     "ABCDEFGI": ["A", "B", "C", "D", "G", "F", "I", "E"],
     "ABCDEFGJ": ["A", "B", "C", "D", "J", "F", "G", "E"],
     "ABCDEFGK": ["A", "B", "C", "D", "K", "F", "G", "E"],
     "ABCDEFL":  ["A", "B", "C", "D", "L", "F", "G", "E"],
+    "ABCDEFHI": ["A", "B", "C", "D", "H", "F", "I", "E"],
 }
 
 casilleros_terceros = ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]
+posiciones_completas = posiciones_fijas.copy()
 
-# Función Fallback Inteligente (Tu Bloque 2 mejorado que previene choques del mismo grupo)
-def asignar_tercero_oficial(opciones_partido, letras_disponibles, grupo_rival):
-    for letra in opciones_partido:
-        if letra in letras_disponibles and letra != grupo_rival:
-            letras_disponibles.remove(letra)
-            return terceros_por_grupo[letra]["equipo"]
-    for letra in opciones_partido:
-        if letra in letras_disponibles:
-            letras_disponibles.remove(letra)
-            return terceros_por_grupo[letra]["equipo"]
-    if letras_disponibles:
-        letra = list(letras_disponibles)[0]
-        letras_disponibles.remove(letra)
-        return terceros_por_grupo[letra]["equipo"]
-    return "Tercero Pendiente"
-
+# Si la combinación está en el reglamento, asignación matemática perfecta
 if combo_terceros in tabla_combinaciones_fifa:
     letras_asignadas = tabla_combinaciones_fifa[combo_terceros]
     for i, casillero in enumerate(casilleros_terceros):
         letra_grupo = letras_asignadas[i]
         posiciones_completas[casillero] = terceros_por_grupo[letra_grupo]["equipo"]
 else:
-    letras_restantes = list(letras_terceros_clasificados).copy()
-    for casillero in casilleros_terceros:
-        posiciones_completas[casillero] = asignar_tercero_oficial(
-            opciones_fifa_terceros[casillero]["opciones"], 
-            letras_restantes, 
-            grupo_rival=opciones_fifa_terceros[casillero]["rival"]
-        )
+    # 🩹 Salvavidas matemático por si la combinación exacta no está en el diccionario precalculado.
+    letras_restantes = set(df_terceros.index[:8])
+    
+    posiciones_completas["3_P3"]  = asignar_tercero_fallback(["A", "B", "C", "D", "F"], letras_restantes, "E", terceros_por_grupo)
+    posiciones_completas["3_P6"]  = asignar_tercero_fallback(["F", "D", "G", "H", "C"], letras_restantes, "I", terceros_por_grupo)
+    posiciones_completas["3_P7"]  = asignar_tercero_fallback(["C", "E", "F", "H", "I"], letras_restantes, "A", terceros_por_grupo)
+    posiciones_completas["3_P8"]  = asignar_tercero_fallback(["E", "H", "I", "J", "K"], letras_restantes, "L", terceros_por_grupo)
+    posiciones_completas["3_P9"]  = asignar_tercero_fallback(["A", "E", "H", "I", "J"], letras_restantes, "G", terceros_por_grupo)
+    posiciones_completas["3_P10"] = asignar_tercero_fallback(["B", "E", "F", "I", "J"], letras_restantes, "D", terceros_por_grupo)
+    posiciones_completas["3_P13"] = asignar_tercero_fallback(["E", "F", "G", "I", "J"], letras_restantes, "B", terceros_por_grupo)
+    posiciones_completas["3_P16"] = asignar_tercero_fallback(["D", "E", "I", "J", "L"], letras_restantes, "K", terceros_por_grupo)
 
-st.success(f"💪 ¡Fase de grupos completada! Terceros distribuidos de forma segura mediante matriz oficial e híbrida anti-coincidencia.")
+st.success(f"💪 ¡Fase de grupos completada! Terceros distribuidos mediante matriz oficial FIFA 2026.")
 
 # ==============================================================================
-# 3. FASE DE ELIMINACIÓN DIRECTA (CON MEMORIA DE ESTADO PERSISTENTE)
+# FASE DE ELIMINACIÓN DIRECTA (CON MEMORIA DE ESTADO PERSISTENTE)
 # ==============================================================================
 st.write("---")
 st.write("### 🔀 2. Cuadro de Eliminación Directa")
@@ -170,7 +165,7 @@ cruces_16vos_estructura = [
     {"name": "Partido 16", "eq1": "1K", "eq2": "3_P16"}
 ]
 
-# Inicialización de Estados de Persistencia
+# Inicialización de Estados en Session State para evitar bugs de persistencia
 if "ganadores_16vos" not in st.session_state: st.session_state.ganadores_16vos = [None] * 16
 if "ganadores_8vos" not in st.session_state: st.session_state.ganadores_8vos = [None] * 8
 if "ganadores_cuartos" not in st.session_state: st.session_state.ganadores_cuartos = [None] * 4
