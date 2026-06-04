@@ -59,8 +59,6 @@ st.caption("Coloca los goles. El sistema calculará las tablas e identificará l
 tablas_grupos = {}
 posiciones_fijas = {}
 terceros_por_grupo = {}
-
-# Diccionario para almacenar TODOS los goles de la fase de grupos para el CSV
 goles_fase_grupos_csv = {}
 
 cols_pestanas = st.columns(3)
@@ -84,7 +82,7 @@ for idx_g, (grupo, equipos) in enumerate(grupos_data.items()):
                 g2 = col3.number_input("G", min_value=0, step=1, key=f"{grupo}_{eq2}_{eq1}_g2", label_visibility="collapsed")
                 with col4: st.write(f"**{eq2}**")
                 
-                # Guardamos goles en el diccionario estructurado para exportación (Ej: "G_A_Mexico_vs_Corea": "2-1")
+                # Almacenamos clave-valor de goles
                 goles_fase_grupos_csv[f"G_{g_letra}_{eq1}_vs_{eq2}"] = f"{g1}-{g2}"
                 
                 puntos[eq1]["gf"] += g1; puntos[eq1]["gc"] += g2
@@ -158,11 +156,10 @@ else:
     st.warning(f"⚠️ Combo '{combo_terceros}' no hallado en el CSV. Activado algoritmo de emergencia.")
 
 # ==============================================================================
-# FASE DE ELIMINACIÓN DIRECTA (CON GOLES Y FUNCIÓN DE PENALES INTEGRADA)
+# FASE DE ELIMINACIÓN DIRECTA
 # ==============================================================================
 st.write("---")
 st.write("### 🔀 2. Cuadro de Eliminación Directa")
-st.caption("Introduce los goles reglamentarios. Si hay empate, se abrirá automáticamente el casillero de Penales.")
 
 cruces_16vos_estructura = [
     {"name": "Partido 1", "eq1": "2A", "eq2": "2B"}, {"name": "Partido 2", "eq1": "1C", "eq2": "2F"},
@@ -183,7 +180,6 @@ if "perdedores_semis" not in st.session_state: st.session_state.perdedores_semis
 
 playoffs_goles_y_ganadores = {}
 
-# --- FUNCIÓN CONTROLADORA DE PARTIDOS DE ELIMINACIÓN DIRECTA (UX SUPREMA) ---
 def render_partido_eliminacion(etiqueta, eq_l, eq_v, key_prefijo):
     st.write(f"**{etiqueta}**")
     c1, c2, c3, c4 = st.columns([3, 1, 1, 3])
@@ -200,8 +196,7 @@ def render_partido_eliminacion(etiqueta, eq_l, eq_v, key_prefijo):
     elif g_v > g_l:
         ganador_partido = eq_v
     else:
-        # CASO EMPATE: Se despliega la tanda de penales
-        st.caption(f"☘️ Definición por Penales para {etiqueta}:")
+        st.caption(f"☘️ Definición por Penales ({etiqueta}):")
         cp1, cp2, cp3 = st.columns([3, 2, 3])
         with cp1: p_l = st.number_input(f"Penales {eq_l}", min_value=0, step=1, key=f"{key_prefijo}_pl")
         with cp3: p_v = st.number_input(f"Penales {eq_v}", min_value=0, step=1, key=f"{key_prefijo}_pv")
@@ -209,12 +204,11 @@ def render_partido_eliminacion(etiqueta, eq_l, eq_v, key_prefijo):
         string_marcador += f" ({p_l}-{p_v} Pen)"
         ganador_partido = eq_l if p_l >= p_v else eq_v
         
-    # Guardamos los goles estructurados y el ganador de forma explícita
     playoffs_goles_y_ganadores[f"Goles_{key_prefijo}"] = string_marcador
     playoffs_goles_y_ganadores[f"Ganador_{key_prefijo}"] = ganador_partido
     return ganador_partido
 
-# --- Dieciseisavos de Final ---
+# --- Render Playoffs ---
 st.write("#### 🔹 Dieciseisavos de Final")
 col_16_1, col_16_2 = st.columns(2)
 for i, cruce in enumerate(cruces_16vos_estructura):
@@ -225,7 +219,6 @@ for i, cruce in enumerate(cruces_16vos_estructura):
         win = render_partido_eliminacion(cruce["name"], eq_local, eq_visita, f"16vos_P{i+1}")
         st.session_state.ganadores_16vos[i] = win
 
-# --- Octavos de Final ---
 st.write("---")
 st.write("#### 🔹 Octavos de Final")
 col_8_1, col_8_2 = st.columns(2)
@@ -237,7 +230,6 @@ for i in range(8):
         win = render_partido_eliminacion(f"Octavos {i+1}", eq_local, eq_visita, f"Octavos_O{i+1}")
         st.session_state.ganadores_8vos[i] = win
 
-# --- Cuartos de Final ---
 st.write("---")
 st.write("#### 🔹 Cuartos de Final")
 col_4_1, col_4_2 = st.columns(2)
@@ -249,7 +241,6 @@ for i in range(4):
         win = render_partido_eliminacion(f"Cuartos {i+1}", eq_local, eq_visita, f"Cuartos_C{i+1}")
         st.session_state.ganadores_cuartos[i] = win
 
-# --- Semifinales ---
 st.write("---")
 st.write("#### 🔹 Semifinales")
 col_semi = st.columns(2)
@@ -261,7 +252,6 @@ for i in range(2):
         st.session_state.finalistas[i] = win
         st.session_state.perdedores_semis[i] = eq_visita if win == eq_local else eq_local
 
-# --- Tercer Puesto y Gran Final ---
 st.write("---")
 col_finales = st.columns(2)
 with col_finales[0]:
@@ -269,17 +259,21 @@ with col_finales[0]:
 with col_finales[1]:
     render_partido_eliminacion("🥇 Gran Final del Mundo", st.session_state.finalistas[0], st.session_state.finalistas[1], "Final")
 
-# --- Extras y Exportación ---
 st.write("---")
 st.write("### 👟 3. Premios Extra")
 goleador = st.text_input("¿Quién creés que será el Bota de Oro (Goleador del Torneo)?:")
 playoffs_goles_y_ganadores["Goleador"] = goleador
 
+# ==============================================================================
+# CODE-PASTE DIRECTO (El usuario copia una sola línea y vos la pegás en Excel)
+# ==============================================================================
 st.write("---")
-st.write("### 📊 4. Guardar y Exportar Predicción")
-nombre_usuario = st.text_input("Introduce tu nombre o apodo del laboratorio para el archivo:")
+st.write("### 📊 4. Finalizar y Generar Código de Envío")
+
+nombre_usuario = st.text_input("Introduce tu nombre o apodo para generar tu resultado:")
 
 if nombre_usuario:
+    # Recolectamos la lista limpia de clasificados (1ros, 2dos e inmediatamente los terceros ordenados)
     lista_clasificados = []
     for g in ["A","B","C","D","E","F","G","H","I","J","K","L"]:
         lista_clasificados.append(posiciones_completas[f"1{g}"])
@@ -287,22 +281,20 @@ if nombre_usuario:
     for casillero in ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]:
         lista_clasificados.append(posiciones_completas[casillero])
 
-    # 🚀 UNIFICACIÓN TOTAL DE DATOS EN EL CSV
-    datos_prode_usuario = {
+    # Unimos todo en un solo diccionario gigante
+    datos_completos = {
         "Usuario": nombre_usuario,
         "Clasificados_Grupos": ",".join(lista_clasificados),
-        **goles_fase_grupos_csv,       # Agrega todos los goles calculados de grupos
-        **playoffs_goles_y_ganadores   # Agrega goles, penales y ganadores de playoffs
+        **goles_fase_grupos_csv,
+        **playoffs_goles_y_ganadores
     }
-
-    df_exportar = pd.DataFrame([datos_prode_usuario])
-    csv_data = df_exportar.to_csv(index=False).encode('utf-8')
-
-    st.download_button(
-        label="💾 DESCARGAR PREDICCIÓN EN CSV",
-        data=csv_data,
-        file_name=f"prode_2026_{nombre_usuario.lower().replace(' ', '_')}.csv",
-        mime="text/csv",
-    )
+    
+    # 💥 LA MAGIA: Convertimos los valores a un string separado por TABULADORES (\t)
+    # Esto hace que al copiar la línea y pegarla en Excel, cada dato se acomode automáticamente en su celda.
+    linea_excel = "\t".join([str(valor) for valor in datos_completos.values()])
+    
+    st.success("¡Todo listo! Copiá el bloque de texto de acá abajo y mandáselo al administrador:")
+    # st.code genera un bloque gris con un botón nativo de "Copiar" arriba a la derecha.
+    st.code(linea_excel, language="text")
 else:
-    st.info("Escribe tu nombre arriba para habilitar el botón de descarga del CSV.")
+    st.info("Escribe tu nombre arriba para generar el código de copia directa.")
