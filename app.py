@@ -11,12 +11,14 @@ st.subheader("Formato Oficial de 48 Equipos - Matriz de Cruces FIFA")
 @st.cache_data
 def cargar_matriz_fifa():
     try:
-        # Usamos dtype=str para que Pandas no interprete las letras como nada raro
-        return pd.read_csv("matriz_fifa_2026.csv", dtype=str)
+        df = pd.read_csv("matriz_fifa_2026.csv", dtype=str)
+        # 🔥 Limpiamos espacios en blanco invisibles en los encabezados y en la columna combo
+        df.columns = df.columns.str.strip()
+        df["combo"] = df["combo"].str.strip()
+        return df
     except FileNotFoundError:
-        # Retornamos un DataFrame vacío si el usuario se olvidó de crear el archivo
         return pd.DataFrame(columns=["combo", "P3", "P6", "P7", "P8", "P9", "P10", "P13", "P16"])
-
+        
 df_matriz_oficial = cargar_matriz_fifa()
 
 # Base de datos oficial de equipos
