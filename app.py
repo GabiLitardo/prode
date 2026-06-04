@@ -5,6 +5,130 @@ st.set_page_config(page_title="Prode Laboratorio 2026", layout="wide")
 st.title("🏆 Simulador Inteligente - Prode Mundial 2026")
 st.subheader("Formato Oficial de 48 Equipos - Matriz de Cruces FIFA")
 
+# 1. Base de datos oficial
+grupos_data = {
+    "Grupo A": ["México", "Corea", "Chequia", "Sudáfrica"],
+    "Grupo B": ["Suiza", "Bosnia", "Canada", "Qatar"],
+    "Grupo C": ["Brasil", "Marruecos", "Haití", "Escocia"],
+    "Grupo D": ["EEUU", "Paraguay", "Australia", "Turquía"],
+    "Grupo E": ["Alemania", "Curazao", "Costa de Marfil", "Ecuador"],
+    "Grupo F": ["Países Bajos", "Japón", "Suecia", "Túnez"],
+    "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
+    "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
+    "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
+    "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
+    "Grupo K": ["Portugal", "RD Congo", "Uzbekistán", "Colombia"],
+    "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
+}
+
+st.write("---")
+st.write("### 📅 1. Fase de Grupos")
+st.info("Asigná los puntos acumulados (0 a 9), la Diferencia de Gol (DG) y los Goles a Favor (GF) para cada equipo.")
+
+posiciones = {}
+todos_los_terceros = {}
+
+# Renderizado de la Fase de Grupos
+cols_grupos = st.columns(3)
+for idx_g, (nombre_grupo, equipos) in enumerate(grupos_data.items()):
+    letra_grupo = nombre_grupo.split(" ")[1]
+    with cols_grupos[idx_g % 3]:
+        st.markdown(f"#### 📦 {nombre_grupo}")
+        resultados_grupo = []
+        
+        for eq in equipos:
+            col_eq, col_pts, col_dg, col_gf = st.columns([3, 2, 2, 2])
+            with col_eq:
+                st.write(f"**{eq}**")
+            with col_pts:
+                pts = st.number_input("Pts", min_value=0, max_value=9, value=3, key=f"pts_{eq}", step=1)
+            with col_dg:
+                dg = st.number_input("DG", min_value=-20, max_value=20, value=0, key=f"dg_{eq}", step=1)
+            with col_gf:
+                gf = st.number_input("GF", min_value=0, max_value=30, value=3, key=f"gf_{eq}", step=1)
+                
+            resultados_grupo.append({"equipo": eq, "pts": pts, "dg": dg, "gf": gf, "grupo": letra_grupo})
+            
+        # Ordenamiento reglamentario interno del grupo
+        df_g = pd.DataFrame(resultados_grupo).sort_values(by=["pts", "dg", "gf", "equipo"], ascending=[False, False, False, True])
+        res_ordenados = df_g.to_dict(orient="records")
+        
+        posiciones[f"1{letra_grupo}"] = res_ordenados[0]["equipo"]
+        posiciones[f"2{letra_grupo}"] = res_ordenados[1]["equipo"]
+        
+        # Almacenar estructura completa del tercero
+        todos_los_terceros[letra_grupo] = res_ordenados[2]
+
+# --- 🛠️ LA SOLUCIÓN DEFINITIVA: MATRIZ DE COMBINACIONES FIFA ---
+mejores_terceros_df = pd.DataFrame.from_dict(todos_los_terceros, orient='index').sort_values(
+    by=["pts", "dg", "gf", "equipo"], 
+    ascending=[False, False, False, True]
+)
+
+mejores_8_terceros_info = mejores_terceros_df.iloc[:8].to_dict(orient='records')
+mejores_8_terceros = [t['equipo'] for t in mejores_8_terceros_info]
+letras_terceros_clasificados = [t['grupo'] for t in mejores_8_terceros_info]
+
+# 1. Obtener el combo de letras ordenado alfabéticamente
+combo_terceros = "".join(sorted(letras_terceros_clasificados))
+
+# 2. Matriz de combinaciones oficiales (Ejemplos de asignación de letras para los 8 casilleros)
+# Casilleros: ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]
+# Rivales correspondientes: [1E, 1I, 1A, 1L, 1G, 1D, 1B, 1K]
+tabla_combinaciones_fifa = {
+    "ABCDEFGH": ["A", "B", "C", "D", "E", "F", "G", "H"], 
+    "ABCDEFGI": ["A", "B", "C", "D", "E", "F", "G", "I"],
+    "ABCDEFJK": ["A", "B", "C", "D", "F", "J", "K", "E"],
+    # Podés seguir expandiendo este diccionario con las páginas oficiales del reglamento de la FIFA.
+}
+
+casilleros_terceros = ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]
+rivales_casilleros = ["E", "I", "A", "L", "G", "D", "B", "K"] # El 1ro de grupo contra el que juegan
+
+if combo_terceros in tabla_combinaciones_fifa:
+    letras_asignadas = tabla_combinaciones_fifa[combo_terceros]
+    for i, casillero in enumerate(casilleros_terceros):
+        letra_grupo = letras_asignadas[i]
+        posiciones[casillero] = todos_los_terceros[letra_grupo]["equipo"]
+else:
+    # 3. Salvavidas matemático estricto: Asignación por restricciones cruzadas (Anti-mismo-grupo)
+    # Si la combinación exacta no está en el diccionario reducido, este bloque calcula una distribución
+    # válida en tiempo real asegurando que NINGÚN tercero juegue contra su propio grupo.
+    letras_restantes = sorted(letras_terceros_clasificados.copy())
+    asignacion_emergencia = {}
+    
+    # Pasada 1: Asignar donde hay riesgo inminente de chocar contra su propio grupo
+    for casillero, rival in zip(casilleros_terceros, rivales_casilleros):
+        if rival in letras_restantes and len(letras_restantes) > 1:
+            # Si la letra del rival está libre, se la damos a OTRO casillero para sacarla del medio
+            candidato = next((l for l in letras_restantes if l != rival), letras_restantes[0])
+            asignacion_emergencia[casillero] = candidato
+            letras_restantes.remove(candidato)
+            
+    # Pasada 2: Completar los casilleros restantes
+    for casillero in casilleros_terceros:
+        if casillero not in asignacion_emergencia:
+            candidato = letras_restantes.pop(0) if letras_restantes else "A"
+            asignacion_emergencia[casillero] = candidato
+
+    # Volcar al diccionario global de posiciones
+    for casillero, letra_grupo in asignacion_emergencia.items():
+        posiciones[casillero] = todos_los_terceros[letra_grupo]["equipo"]
+
+# --- CONFIGURACIÓN Y RENDER DE PLAYOFFS ---
+st.write("---")
+st.write("### ⚔️ 2. Fase de Eliminación Directa")
+st.caption("Seleccioná haciendo clic en el botón redondo al equipo que pasa de ronda.")
+
+playoffs_resultados = {}
+
+cruces_16vos_estructura =import streamlit as st
+import pandas as pd
+
+st.set_page_config(page_title="Prode Laboratorio 2026", layout="wide")
+st.title("🏆 Simulador Inteligente - Prode Mundial 2026")
+st.subheader("Formato Oficial de 48 Equipos - Matriz de Cruces FIFA")
+
 # 1. Base de datos oficial aportada por el usuario
 grupos_data = {
     "Grupo A": ["México", "Corea", "Chequia", "Sudáfrica"],
