@@ -5,7 +5,21 @@ st.set_page_config(page_title="Prode Laboratorio 2026", layout="wide")
 st.title("🏆 Simulador Inteligente - Prode Mundial 2026")
 st.subheader("Formato Oficial de 48 Equipos - Matriz de Cruces FIFA")
 
-# 1. Base de datos oficial
+# ==============================================================================
+# CARGA DE MATRIZ OFICIAL DESDE CSV EXTERNO (Arquitectura Profesional)
+# ==============================================================================
+@st.cache_data
+def cargar_matriz_fifa():
+    try:
+        # Usamos dtype=str para que Pandas no interprete las letras como nada raro
+        return pd.read_csv("matriz_fifa_2026.csv", dtype=str)
+    except FileNotFoundError:
+        # Retornamos un DataFrame vacío si el usuario se olvidó de crear el archivo
+        return pd.DataFrame(columns=["combo", "P3", "P6", "P7", "P8", "P9", "P10", "P13", "P16"])
+
+df_matriz_oficial = cargar_matriz_fifa()
+
+# Base de datos oficial de equipos
 grupos_data = {
     "Grupo A": ["México", "Corea", "Chequia", "Sudáfrica"],
     "Grupo B": ["Suiza", "Bosnia", "Canada", "Qatar"],
@@ -21,7 +35,7 @@ grupos_data = {
     "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
 }
 
-# Declaración anticipada de la función Fallback (Evita redeclaraciones en el renderizado)
+# Función Fallback (Tu salvavidas por si la combinación simulada no está cargada aún en el CSV)
 def asignar_tercero_fallback(opciones_partido, letras_disponibles, grupo_rival, terceros_dict):
     for letra in opciones_partido:
         if letra in letras_disponibles and letra != grupo_rival:
@@ -38,13 +52,13 @@ def asignar_tercero_fallback(opciones_partido, letras_disponibles, grupo_rival, 
     return "Tercero Pendiente"
 
 st.write("### ⚽ 1. Carga los resultados de la Fase de Grupos")
-st.caption("Coloca los goles. El sistema calculará las tablas e identificará los 8 mejores terceros de forma automática.")
+st.caption("Coloca los goles. El sistema calculará las tablas e identificará los mejores terceros de forma automática.")
 
 tablas_grupos = {}
 posiciones_fijas = {}
 terceros_por_grupo = {}
 
-# Generar fixture simulado e interfaz de carga de goles (UX fluida)
+# Carga de goles y render dinámico
 cols_pestanas = st.columns(3)
 for idx_g, (grupo, equipos) in enumerate(grupos_data.items()):
     g_letra = grupo.split(" ")[1]
@@ -95,38 +109,31 @@ for idx_g, (grupo, equipos) in enumerate(grupos_data.items()):
                 "gf": tabla_df.iloc[2]["gf"]
             }
 
-# Ranking global de los terceros para ver cuáles 8 clasifican
+# Procesamiento global de terceros clasificados
 df_terceros = pd.DataFrame.from_dict(terceros_por_grupo, orient='index').sort_values(by=["pts", "dg", "gf"], ascending=False)
-
-# Creamos un string ordenado alfabéticamente con las 8 letras clasificadas (ej: "ABCDEFGH")
 combo_terceros = "".join(sorted(list(df_terceros.index[:8])))
 mejores_8_terceros = [terceros_por_grupo[l]["equipo"] for l in df_terceros.index[:8]]
 
-# ==============================================================================
-# MATRIZ OFICIAL DE COMBINACIONES DE LA FIFA (MUNDIAL 2026)
-# Cada fila representa el orden exacto de grupos destinados a:
-# ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]
-# ==============================================================================
-tabla_combinaciones_fifa = {
-    "ABCDEFGH": ["A", "B", "C", "D", "E", "F", "G", "H"],
-    "ABCDEFGI": ["A", "B", "C", "D", "G", "F", "I", "E"],
-    "ABCDEFGJ": ["A", "B", "C", "D", "J", "F", "G", "E"],
-    "ABCDEFGK": ["A", "B", "C", "D", "K", "F", "G", "E"],
-    "ABCDEFL":  ["A", "B", "C", "D", "L", "F", "G", "E"],
-    "ABCDEFHI": ["A", "B", "C", "D", "H", "F", "I", "E"],
-}
-
-casilleros_terceros = ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]
 posiciones_completas = posiciones_fijas.copy()
 
-# Si la combinación está en el reglamento, asignación matemática perfecta
-if combo_terceros in tabla_combinaciones_fifa:
-    letras_asignadas = tabla_combinaciones_fifa[combo_terceros]
-    for i, casillero in enumerate(casilleros_terceros):
-        letra_grupo = letras_asignadas[i]
-        posiciones_completas[casillero] = terceros_por_grupo[letra_grupo]["equipo"]
+# ==============================================================================
+# PROCESAMIENTO REGLAMENTARIO BASADO EN TU MATRIZ CSV EXTERNA
+# ==============================================================================
+fila_oficial = df_matriz_oficial[df_matriz_oficial["combo"] == combo_terceros]
+
+if not fila_oficial.empty:
+    # Si la combinación existe en el CSV oficial de la FIFA (Asignación matemática perfecta)
+    posiciones_completas["3_P3"]  = terceros_por_grupo[fila_oficial["P3"].values[0]]["equipo"]
+    posiciones_completas["3_P6"]  = terceros_por_grupo[fila_oficial["P6"].values[0]]["equipo"]
+    posiciones_completas["3_P7"]  = terceros_por_grupo[fila_oficial["P7"].values[0]]["equipo"]
+    posiciones_completas["3_P8"]  = terceros_por_grupo[fila_oficial["P8"].values[0]]["equipo"]
+    posiciones_completas["3_P9"]  = terceros_por_grupo[fila_oficial["P9"].values[0]]["equipo"]
+    posiciones_completas["3_P10"] = terceros_por_grupo[fila_oficial["P10"].values[0]]["equipo"]
+    posiciones_completas["3_P13"] = terceros_por_grupo[fila_oficial["P13"].values[0]]["equipo"]
+    posiciones_completas["3_P16"] = terceros_por_grupo[fila_oficial["P16"].values[0]]["equipo"]
+    st.success(f"💪 ¡Fase de grupos completada! Terceros distribuidos mediante el archivo CSV de la Matriz Oficial FIFA.")
 else:
-    # 🩹 Salvavidas matemático por si la combinación exacta no está en el diccionario precalculado.
+    # Fallback seguro por si la app está en fase de desarrollo o pruebas y no encuentra el combo en el CSV
     letras_restantes = set(df_terceros.index[:8])
     
     posiciones_completas["3_P3"]  = asignar_tercero_fallback(["A", "B", "C", "D", "F"], letras_restantes, "E", terceros_por_grupo)
@@ -137,8 +144,7 @@ else:
     posiciones_completas["3_P10"] = asignar_tercero_fallback(["B", "E", "F", "I", "J"], letras_restantes, "D", terceros_por_grupo)
     posiciones_completas["3_P13"] = asignar_tercero_fallback(["E", "F", "G", "I", "J"], letras_restantes, "B", terceros_por_grupo)
     posiciones_completas["3_P16"] = asignar_tercero_fallback(["D", "E", "I", "J", "L"], letras_restantes, "K", terceros_por_grupo)
-
-st.success(f"💪 ¡Fase de grupos completada! Terceros distribuidos mediante matriz oficial FIFA 2026.")
+    st.warning(f"⚠️ Combo '{combo_terceros}' no hallado en el CSV. Se activó el algoritmo de distribución de emergencia.")
 
 # ==============================================================================
 # FASE DE ELIMINACIÓN DIRECTA (CON MEMORIA DE ESTADO PERSISTENTE)
@@ -165,7 +171,6 @@ cruces_16vos_estructura = [
     {"name": "Partido 16", "eq1": "1K", "eq2": "3_P16"}
 ]
 
-# Inicialización de Estados en Session State para evitar bugs de persistencia
 if "ganadores_16vos" not in st.session_state: st.session_state.ganadores_16vos = [None] * 16
 if "ganadores_8vos" not in st.session_state: st.session_state.ganadores_8vos = [None] * 8
 if "ganadores_cuartos" not in st.session_state: st.session_state.ganadores_cuartos = [None] * 4
@@ -191,7 +196,7 @@ for i, cruce in enumerate(cruces_16vos_estructura):
             f"**{cruce['name']}**: {eq_local} vs {eq_visita}", 
             [eq_local, eq_visita], 
             index=current_idx,
-            key=f"l16_state_fix_{i}", 
+            key=f"l16_state_final_{i}", 
             horizontal=True
         )
         st.session_state.ganadores_16vos[i] = ganador
@@ -213,7 +218,7 @@ for i in range(8):
             f"Octavos {i+1} (Ganador P{i*2+1} vs P{i*2+2})", 
             [eq_local, eq_visita], 
             index=current_idx,
-            key=f"l8_state_fix_{i}", 
+            key=f"l8_state_final_{i}", 
             horizontal=True
         )
         st.session_state.ganadores_8vos[i] = ganador
@@ -235,7 +240,7 @@ for i in range(4):
             f"Cuartos {i+1} (Ganador Octavos {i*2+1} vs {i*2+2})", 
             [eq_local, eq_visita], 
             index=current_idx,
-            key=f"l4_state_fix_{i}", 
+            key=f"l4_state_final_{i}", 
             horizontal=True
         )
         st.session_state.ganadores_cuartos[i] = ganador
@@ -256,7 +261,7 @@ for i in range(2):
             f"Semifinal {i+1} (Ganador Cuartos {i*2+1} vs {i*2+2})", 
             [eq_local, eq_visita], 
             index=current_idx,
-            key=f"lsemi_state_fix_{i}", 
+            key=f"lsemi_state_final_{i}", 
             horizontal=True
         )
         st.session_state.finalistas[i] = ganador
@@ -272,7 +277,7 @@ with col_finales[0]:
     p_3er_1 = st.session_state.perdedores_semis[0]
     p_3er_2 = st.session_state.perdedores_semis[1]
     current_idx_t = 1 if st.session_state.tercer_puesto_win == p_3er_2 else 0
-    tercer_puesto = st.radio(f"Definición: {p_3er_1} vs {p_3er_2}", [p_3er_1, p_3er_2], index=current_idx_t, key="3er_puesto_state_fix", horizontal=True)
+    tercer_puesto = st.radio(f"Definición: {p_3er_1} vs {p_3er_2}", [p_3er_1, p_3er_2], index=current_idx_t, key="3er_puesto_state_final", horizontal=True)
     st.session_state.tercer_puesto_win = tercer_puesto
     playoffs_resultados["Tercer_Puesto"] = tercer_puesto
 
@@ -281,7 +286,7 @@ with col_finales[1]:
     f1 = st.session_state.finalistas[0]
     f2 = st.session_state.finalistas[1]
     current_idx_f = 1 if st.session_state.campeon_win == f2 else 0
-    campeon = st.radio(f"🏆 FINAL: {f1} vs {f2}", [f1, f2], index=current_idx_f, key="final_state_fix", horizontal=True)
+    campeon = st.radio(f"🏆 FINAL: {f1} vs {f2}", [f1, f2], index=current_idx_f, key="final_state_final", horizontal=True)
     st.session_state.campeon_win = campeon
     playoffs_resultados["Campeon"] = campeon
     playoffs_resultados["Subcampeon"] = f2 if campeon == f1 else f1
