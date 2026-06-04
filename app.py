@@ -153,6 +153,37 @@ else:
     st.warning(f"⚠️ Combo '{combo_terceros}' no hallado en el CSV. Se activó el algoritmo de distribución de emergencia.")
 
 # ==============================================================================
+# 📊 TABLA VISUAL DE MEJORES TERCEROS (ESTILO REGLAMENTARIO FIFA)
+# ==============================================================================
+st.write("---")
+st.write("### 🏅 Ranking de Mejores Terceros")
+st.caption("Los 8 mejores terceros clasifican a los Dieciseisavos de Final. Se actualiza automáticamente.")
+
+# Ranking global de los terceros para ver cuáles 8 clasifican
+df_terceros = pd.DataFrame.from_dict(terceros_por_grupo, orient='index').sort_values(by=["pts", "dg", "gf"], ascending=False)
+
+# Creamos un string ordenado alfabéticamente con las 8 letras clasificadas (ej: "ABCDEFGH")
+combo_terceros = "".join(sorted(list(df_terceros.index[:8])))
+mejores_8_terceros = [terceros_por_grupo[l]["equipo"] for l in df_terceros.index[:8]]
+
+# Formateamos el DataFrame visual para el usuario
+df_visual_terceros = df_terceros.copy()
+df_visual_terceros.index.name = "Grupo"
+df_visual_terceros.columns = ["Equipo Tercero", "Pts", "DG", "GF"]
+
+# Función para pintar las filas (Verde para clasificados, Rojo para eliminados)
+def destacar_clasificados(row):
+    # Si el grupo de la fila está entre los primeros 8 del ranking general
+    if row.name in df_terceros.index[:8]:
+        return ['background-color: rgba(40, 167, 69, 0.2)'] * len(row)  # Verde sutil
+    else:
+        return ['background-color: rgba(220, 53, 69, 0.2)'] * len(row)   # Rojo sutil
+
+# Renderizamos el cuadro estilizado que pidió el usuario
+df_estilizado = df_visual_terceros.style.apply(destacar_clasificados, axis=1)
+st.dataframe(df_estilizado, use_container_width=True)
+
+# ==============================================================================
 # FASE DE ELIMINACIÓN DIRECTA (CON MEMORIA DE ESTADO PERSISTENTE)
 # ==============================================================================
 st.write("---")
