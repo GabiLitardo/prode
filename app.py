@@ -21,6 +21,318 @@ grupos_data = {
     "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
 }
 
+st.write("---")
+st.write("### 📅 1. Fase de Grupos")
+st.info("Asigná los puntos acumulados (0 a 9), la Diferencia de Gol (DG) y los Goles a Favor (GF) para cada equipo.")
+
+posiciones = {}
+todos_los_terceros = {}
+
+# Renderizado de la Fase de Grupos
+cols_grupos = st.columns(3)
+for idx_g, (nombre_grupo, equipos) in enumerate(grupos_data.items()):
+    letra_grupo = nombre_grupo.split(" ")[1]
+    with cols_grupos[idx_g % 3]:
+        st.markdown(f"#### 📦 {nombre_grupo}")
+        resultados_grupo = []
+        
+        for eq in equipos:
+            col_eq, col_pts, col_dg, col_gf = st.columns([3, 2, 2, 2])
+            with col_eq:
+                st.write(f"**{eq}**")
+            with col_pts:
+                pts = st.number_input("Pts", min_value=0, max_value=9, value=3, key=f"pts_{eq}", step=1)
+            with col_dg:
+                dg = st.number_input("DG", min_value=-20, max_value=20, value=0, key=f"dg_{eq}", step=1)
+            with col_gf:
+                gf = st.number_input("GF", min_value=0, max_value=30, value=3, key=f"gf_{eq}", step=1)
+                
+            resultados_grupo.append({"equipo": eq, "pts": pts, "dg": dg, "gf": gf, "grupo": letra_grupo})
+            
+        # Ordenamiento interno del grupo según criterios básicos
+        df_g = pd.DataFrame(resultados_grupo).sort_values(by=["pts", "dg", "gf", "equipo"], ascending=[False, False, False, True])
+        res_ordenados = df_g.to_dict(orient="records")
+        
+        # Guardar 1ro y 2do puesto directos
+        posiciones[f"1{letra_grupo}"] = res_ordenados[0]["equipo"]
+        posiciones[f"2{letra_grupo}"] = res_ordenados[1]["equipo"]
+        
+        # Almacenar el 3ro para el búnker general
+        todos_los_terceros[letra_grupo] = res_ordenados[2]
+
+# --- ALGORITMO OFICIAL DE SELECCIÓN Y DISTRIBUCIÓN DE TERCEROS ---
+mejores_terceros_df = pd.DataFrame.from_dict(todos_los_terceros, orient='index').sort_values(
+    by=["pts", "dg", "gf", "equipo"], 
+    ascending=[False, False, False, True]
+)
+mejores_8_terceros_info = mejores_terceros_df.iloc[:8].to_dict(orient='records')
+mejores_8_terceros = [t['equipo'] for t in mejores_8_terceros_info]
+letras_clasificadas = [t['grupo'] for t in mejores_8_terceros_info]
+
+# Matriz exacta de opciones reglamentarias aportada por el usuario
+opciones_fifa_terceros = {
+    "3_P3":  ["A", "B", "C", "D", "F"],
+    "3_P6":  ["F", "D", "G", "H", "C"],
+    "3_P7":  ["C", "E", "F", "H", "I"],
+    "3_P8":  ["E", "H", "I", "J", "K"],
+    "3_P9":  ["A", "E", "H", "I", "J"],
+    "3_P10": ["B", "E", "F", "I", "J"],
+    "3_P13": ["E", "F", "G", "I", "J"],
+    "3_P16": ["D", "E", "I", "J", "L"]
+}
+
+letras_restantes = letras_clasificadas.copy()
+for puesto_llave, opciones in opciones_fifa_terceros.items():
+    letra_elegida = next((l for l in opciones if l in letras_restantes), None)
+    
+    if not letra_elegida:
+        # Salvavidas en caso de testeos manuales atípicos
+        letra_elegida = letras_restantes[0] if letras_restantes else "A"
+        
+    info_equipo = next((t for t in mejores_8_terceros_info if t['grupo'] == letra_elegida), None)
+    
+    if info_equipo:
+        posiciones[puesto_llave] = info_equipo['equipo']
+        if letra_elegida in letras_restantes:
+            letras_restantes.remove(letra_elegida)
+    else:
+        posiciones[puesto_llave] = "Tercero Pendiente"
+
+# --- CONFIGURACIÓN Y RENDER DE PLAYOFFS ---
+st.write("---")
+st.write("### ⚔️ 2. Fase de Eliminación Directa")
+st.caption("Seleccioná haciendo clic en el botón redondo al equipo que pasa de ronda.")
+
+playoffs_resultados = {}
+
+# Definición estructural de llaves (Cruces fijos FIFA 2026)
+cruces_16vos_estructura = [
+    {"name": "Partido 1", "eq1": "2A", "eq2": "2B"},
+    {"name": "Partido 2", "eq1": "1C", "eq2": "2F"},
+    {"name": "Partido 3", "eq1": "1E", "eq2": "3_P3"},
+    {"name": "Partido 4", "eq1": "1F", "eq2": "2C"},
+    {"name": "Partido 5", "eq1": "2E", "eq2": "2I"},
+    {"name": "Partido 6", "eq1": "1I", "eq2": "3_P6"},
+    {"name": "Partido 7", "eq1": "1A", "eq2": "3_P7"},
+    {"name": "Partido 8", "eq1": "1L", "eq2": "3_P8"},
+    {"name": "Partido 9", "eq1": "1G", "eq2": "3_P9"},
+    {"name": "Partido 10", "eq1": "1D", "eq2": "3_P10"},
+    {"name": "Partido 11", "eq1": "1H", "eq2": "2J"},
+    {"name": "Partido 12", "eq1": "2K", "eq2": "2L"},
+    {"name": "Partido 13", "eq1": "1B", "eq2": "3_P13"},
+    {"name": "Partido 14", "eq1": "2D", "eq2": "2G"},
+    {"name": "Partido 15", "eq1": "1J", "eq2": "2H"},
+    {"name": "Partido 16", "eq1": "1K", "eq2": "3_P16"}
+]
+
+# Inicializadores estables en Session State para evitar borrados
+if "ganadores_16vos" not in st.session_state:
+    st.session_state.ganadores_16vos = [None] * 16
+if "ganadores_octavos" not in st.session_state:
+    st.session_state.ganadores_octavos = [None] * 8
+if "ganadores_cuartos" not in st.session_state:
+    st.session_state.ganadores_cuartos = [None] * 4
+if "ganadores_semis" not in st.session_state:
+    st.session_state.ganadores_semis = [None] * 2
+if "ganador_tercer_puesto" not in st.session_state:
+    st.session_state.ganador_tercer_puesto = None
+if "ganador_final" not in st.session_state:
+    st.session_state.ganador_final = None
+
+# ---- RENDER 16VOS ----
+st.markdown("#### 🟥 Dieciseisavos de Final (1/16)")
+col_16_1, col_16_2 = st.columns(2)
+ganadores_16vos = []
+
+for i, cruce in enumerate(cruces_16vos_estructura):
+    eq_local = posiciones.get(cruce["eq1"], cruce["eq1"])
+    eq_visita = posiciones.get(cruce["eq2"], cruce["eq2"])
+    
+    default_idx = 1 if st.session_state.ganadores_16vos[i] == eq_visita else 0
+    target_col = col_16_1 if i < 8 else col_16_2
+    
+    with target_col:
+        ganador = st.radio(
+            f"**{cruce['name']}**: {eq_local} vs {eq_visita}", 
+            [eq_local, eq_visita], 
+            index=default_idx, 
+            key=f"radio_16_p{i}", 
+            horizontal=True
+        )
+        st.session_state.ganadores_16vos[i] = ganador
+        ganadores_16vos.append(ganador)
+        playoffs_resultados[f"Ganador_16vos_P{i+1}"] = ganador
+
+# ---- RENDER OCTAVOS ----
+st.markdown("#### 🟧 Octavos de Final")
+col_8_1, col_8_2 = st.columns(2)
+cruces_octavos_mapeo = [
+    (1, 2), (3, 4), (5, 6), (7, 8),
+    (9, 10), (11, 12), (13, 14), (15, 16)
+]
+ganadores_octavos = []
+
+for i, (p1, p2) in enumerate(cruces_octavos_mapeo):
+    eq1 = ganadores_16vos[p1-1]
+    eq2 = ganadores_16vos[p2-1]
+    
+    default_idx = 1 if st.session_state.ganadores_octavos[i] == eq2 else 0
+    target_col = col_8_1 if i < 4 else col_8_2
+    
+    with target_col:
+        ganador = st.radio(
+            f"**Octavos {i+1}**: {eq1} vs {eq2}", 
+            [eq1, eq2], 
+            index=default_idx, 
+            key=f"radio_8_p{i}", 
+            horizontal=True
+        )
+        st.session_state.ganadores_octavos[i] = ganador
+        ganadores_octavos.append(ganador)
+        playoffs_resultados[f"Ganador_Octavos_O{i+1}"] = ganador
+
+# ---- RENDER CUARTOS ----
+st.markdown("#### 🟨 Cuartos de Final")
+col_4_1, col_4_2 = st.columns(2)
+cruces_cuartos_mapeo = [(1, 2), (3, 4), (5, 6), (7, 8)]
+ganadores_cuartos = []
+
+for i, (o1, o2) in enumerate(cruces_cuartos_mapeo):
+    eq1 = ganadores_octavos[o1-1]
+    eq2 = ganadores_octavos[o2-1]
+    
+    default_idx = 1 if st.session_state.ganadores_cuartos[i] == eq2 else 0
+    target_col = col_4_1 if i < 2 else col_4_2
+    
+    with target_col:
+        ganador = st.radio(
+            f"**Cuartos {i+1}**: {eq1} vs {eq2}", 
+            [eq1, eq2], 
+            index=default_idx, 
+            key=f"radio_4_p{i}", 
+            horizontal=True
+        )
+        st.session_state.ganadores_cuartos[i] = ganador
+        ganadores_cuartos.append(ganador)
+        playoffs_resultados[f"Ganador_Cuartos_C{i+1}"] = ganador
+
+# ---- RENDER SEMIFINALES ----
+st.markdown("#### 🟦 Semifinales")
+col_s1, col_s2 = st.columns(2)
+cruces_semis_mapeo = [(1, 2), (3, 4)]
+ganadores_semis = []
+perdedores_semis = []
+
+for i, (c1, c2) in enumerate(cruces_semis_mapeo):
+    eq1 = ganadores_cuartos[c1-1]
+    eq2 = ganadores_cuartos[c2-1]
+    
+    default_idx = 1 if st.session_state.ganadores_semis[i] == eq2 else 0
+    target_col = col_s1 if i == 0 else col_s2
+    
+    with target_col:
+        ganador = st.radio(
+            f"**Semifinal {i+1}**: {eq1} vs {eq2}", 
+            [eq1, eq2], 
+            index=default_idx, 
+            key=f"radio_s_p{i}", 
+            horizontal=True
+        )
+        st.session_state.ganadores_semis[i] = ganador
+        ganadores_semis.append(ganador)
+        perdedor = eq2 if ganador == eq1 else eq1
+        perdedores_semis.append(perdedor)
+        playoffs_resultados[f"Ganador_Semi_{i+1}"] = ganador
+
+# ---- RENDER TERCER PUESTO Y FINAL ----
+st.markdown("#### 👑 Definición del Podio")
+col_tercer, col_final = st.columns(2)
+
+with col_tercer:
+    st.markdown("##### 🥉 Tercer Puesto")
+    eq_t1, eq_t2 = perdedores_semis[0], perdedores_semis[1]
+    default_idx_t = 1 if st.session_state.ganador_tercer_puesto == eq_t2 else 0
+    tercer_puesto = st.radio(
+        f"Consolación: {eq_t1} vs {eq_t2}", 
+        [eq_t1, eq_t2], 
+        index=default_idx_t, 
+        key="radio_3er_puesto", 
+        horizontal=True
+    )
+    st.session_state.ganador_tercer_puesto = tercer_puesto
+    playoffs_resultados["Tercer_Puesto"] = tercer_puesto
+
+with col_final:
+    st.markdown("##### 🥇 Gran Final")
+    eq_f1, eq_f2 = ganadores_semis[0], ganadores_semis[1]
+    default_idx_f = 1 if st.session_state.ganador_final == eq_f2 else 0
+    campeon = st.radio(
+        f"Mundial 2026: {eq_f1} vs {eq_f2}", 
+        [eq_f1, eq_f2], 
+        index=default_idx_f, 
+        key="radio_final", 
+        horizontal=True
+    )
+    st.session_state.ganador_final = campeon
+    subcampeon = eq_f2 if campeon == eq_f1 else eq_f1
+    playoffs_resultados["Campeon"] = campeon
+    playoffs_resultados["Subcampeon"] = subcampeon
+
+# --- Extras y Exportación ---
+st.write("---")
+st.write("### 👑 3. Premios Extra")
+goleador = st.text_input("¿Quién creés que será el Bota de Oro (Goleador del Torneo)?:")
+playoffs_resultados["Goleador"] = goleador
+
+st.write("---")
+st.write("### 📊 4. Guardar y Exportar Predicción")
+nombre_usuario = st.text_input("Introduce tu nombre o apodo del laboratorio para el archivo:")
+
+if nombre_usuario:
+    lista_clasificados = []
+    for g in ["A","B","C","D","E","F","G","H","I","J","K","L"]:
+        lista_clasificados.append(posiciones[f"1{g}"])
+        lista_clasificados.append(posiciones[f"2{g}"])
+    lista_clasificados.extend(mejores_8_terceros)
+
+    datos_prode_usuario = {
+        "Usuario": nombre_usuario,
+        "Clasificados_Grupos": ",".join(lista_clasificados),
+        **playoffs_resultados
+    }
+
+    df_exportar = pd.DataFrame([datos_prode_usuario])
+    csv_data = df_exportar.to_csv(index=False).encode('utf-8')
+    
+    st.download_button(
+        label="📥 Descargar mi Prode (CSV)",
+        data=csv_data,
+        file_name=f"prode_2026_{nombre_usuario.lower().replace(' ', '_')}.csv",
+        mime="text/csv"
+    )
+    st.success(f"¡Excelente, {nombre_usuario}! Tu archivo de predicciones está listo para descargar.")import streamlit as st
+import pandas as pd
+
+st.set_page_config(page_title="Prode Laboratorio 2026", layout="wide")
+st.title("🏆 Simulador Inteligente - Prode Mundial 2026")
+st.subheader("Formato Oficial de 48 Equipos - Matriz de Cruces FIFA")
+
+# 1. Base de datos oficial aportada por el usuario
+grupos_data = {
+    "Grupo A": ["México", "Corea", "Chequia", "Sudáfrica"],
+    "Grupo B": ["Suiza", "Bosnia", "Canada", "Qatar"],
+    "Grupo C": ["Brasil", "Marruecos", "Haití", "Escocia"],
+    "Grupo D": ["EEUU", "Paraguay", "Australia", "Turquía"],
+    "Grupo E": ["Alemania", "Curazao", "Costa de Marfil", "Ecuador"],
+    "Grupo F": ["Países Bajos", "Japón", "Suecia", "Túnez"],
+    "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
+    "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
+    "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
+    "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
+    "Grupo K": ["Portugal", "RD Congo", "Uzbekistán", "Colombia"],
+    "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"]
+}
+
 st.write("### ⚽ 1. Carga los resultados de la Fase de Grupos")
 st.caption("Coloca los goles. El sistema calculará las tablas e identificará los 8 mejores terceros de forma automática.")
 
