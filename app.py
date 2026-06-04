@@ -305,15 +305,25 @@ playoffs_resultados["Goleador"] = goleador
 
 st.write("---")
 st.write("### 📊 4. Guardar y Exportar Predicción")
+# ==============================================================================
+# 📊 4. GUARDAR Y EXPORTAR PREDICCIÓN (CORREGIDO REGLAMENTARIAMENTE)
+# ==============================================================================
 nombre_usuario = st.text_input("Introduce tu nombre o apodo del laboratorio para el archivo:")
 
 if nombre_usuario:
     lista_clasificados = []
+    
+    # 1. Agregamos 1ros y 2dos de cada grupo (A-L)
     for g in ["A","B","C","D","E","F","G","H","I","J","K","L"]:
         lista_clasificados.append(posiciones_completas[f"1{g}"])
         lista_clasificados.append(posiciones_completas[f"2{g}"])
-    lista_clasificados.extend(mejores_8_terceros)
+        
+    # 2. 🔥 CORRECCIÓN: Agregamos los terceros en el orden EXACTO de los casilleros de la llave
+    casilleros_ordenados = ["3_P3", "3_P6", "3_P7", "3_P8", "3_P9", "3_P10", "3_P13", "3_P16"]
+    for casillero in casilleros_ordenados:
+        lista_clasificados.append(posiciones_completas[casillero])
 
+    # 3. Construimos el diccionario final para el CSV
     datos_prode_usuario = {
         "Usuario": nombre_usuario,
         "Clasificados_Grupos": ",".join(lista_clasificados),
